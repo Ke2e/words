@@ -110,3 +110,13 @@
     - db:reset 数据库重置，将数据库重置为初始状态
     - db:studio 数据库管理工具，用于管理数据库表和数据
 
+<br />
+
+## words 表
+
+- github 下载 zip -> json 文件（178kb）
+  - 需要创建一个 words 表
+  - 如何导入这个数据？ json -> sql/csv 直接导入数据库
+
+<br />
+
