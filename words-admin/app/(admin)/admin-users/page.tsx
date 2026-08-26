@@ -27,15 +27,22 @@ type AdminUser = {
   name: string
   email: string
   role: "system_admin" | "admin"
+  status: "enabled" | "disabled"
   createdAt: string
   updatedAt: string
 }
 
 type Role = "system_admin" | "admin"
+type Status = "enabled" | "disabled"
 
 const roleLabels: Record<Role, string> = {
   system_admin: "系统管理员",
   admin: "普通管理员",
+}
+
+const statusLabels: Record<Status, string> = {
+  enabled: "启用",
+  disabled: "已禁用",
 }
 
 function formatDate(iso: string) {
@@ -61,7 +68,13 @@ export default function AdminUsersPage() {
 
   // 编辑对话框
   const [editing, setEditing] = useState<AdminUser | null>(null)
-  const [editForm, setEditForm] = useState({ name: "", email: "", role: "admin" as Role, password: "" })
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    role: "admin" as Role,
+    status: "enabled" as Status,
+    password: "",
+  })
 
   // 删除确认
   const [deleting, setDeleting] = useState<AdminUser | null>(null)
@@ -104,7 +117,9 @@ export default function AdminUsersPage() {
     [users, searchQuery]
   )
 
-  const systemAdminCount = users.filter((u) => u.role === "system_admin").length
+  const enabledSystemAdminCount = users.filter(
+    (u) => u.role === "system_admin" && u.status === "enabled"
+  ).length
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -145,10 +160,15 @@ export default function AdminUsersPage() {
     }
     setIsSubmitting(true)
     try {
+      const isSelf = editing.id === currentUser?.id
       const payload: Record<string, string> = {
         name: editForm.name,
         email: editForm.email,
-        role: editForm.role,
+      }
+      // 系统管理员不能修改自己的角色和状态
+      if (!isSelf) {
+        payload.role = editForm.role
+        payload.status = editForm.status
       }
       if (editForm.password) payload.password = editForm.password
 
@@ -165,7 +185,7 @@ export default function AdminUsersPage() {
       setEditing(null)
       await loadUsers()
       // 编辑的是当前登录用户：同步全局登录态（名称 / 邮箱 / 角色）
-      if (editing.id === currentUser?.id) {
+      if (isSelf) {
         await refresh()
       }
     } catch {
@@ -198,7 +218,13 @@ export default function AdminUsersPage() {
   function openEdit(user: AdminUser) {
     setError("")
     setEditing(user)
-    setEditForm({ name: user.name, email: user.email, role: user.role, password: "" })
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      password: "",
+    })
   }
 
   // 权限守卫渲染
@@ -223,7 +249,9 @@ export default function AdminUsersPage() {
       <Card>
         <CardHeader>
           <CardTitle>管理员列表</CardTitle>
-          <CardDescription>共 {filteredUsers.length} 个管理员（其中系统管理员 {systemAdminCount} 个）</CardDescription>
+          <CardDescription>
+            共 {filteredUsers.length} 个管理员（其中启用中的系统管理员 {enabledSystemAdminCount} 个）
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -252,6 +280,7 @@ export default function AdminUsersPage() {
                 <TableHead>管理员</TableHead>
                 <TableHead>邮箱</TableHead>
                 <TableHead>角色</TableHead>
+                <TableHead>状态</TableHead>
                 <TableHead>创建时间</TableHead>
                 <TableHead className="text-right">操作</TableHead>
               </TableRow>
@@ -260,10 +289,11 @@ export default function AdminUsersPage() {
               {filteredUsers.map((user) => {
                 const initials = user.name.slice(0, 2).toUpperCase()
                 const isSelf = user.id === currentUser.id
-                // 最后一个系统管理员不可降级/删除
-                const isLastSystemAdmin =
+                // 最后一个启用中的系统管理员不可降级/禁用/删除
+                const isLastEnabledSystemAdmin =
                   user.role === "system_admin" &&
-                  systemAdminCount <= 1
+                  user.status === "enabled" &&
+                  enabledSystemAdminCount <= 1
                 return (
                   <TableRow key={user.id}>
                     <TableCell>
@@ -283,6 +313,11 @@ export default function AdminUsersPage() {
                         {roleLabels[user.role]}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={user.status === "enabled" ? "outline" : "destructive"}>
+                        {statusLabels[user.status]}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{formatDate(user.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -296,7 +331,7 @@ export default function AdminUsersPage() {
                         variant="ghost"
                         size="sm"
                         className="text-destructive"
-                        disabled={isSelf || isLastSystemAdmin}
+                        disabled={isSelf || isLastEnabledSystemAdmin}
                         onClick={() => setDeleting(user)}
                       >
                         删除
@@ -307,7 +342,7 @@ export default function AdminUsersPage() {
               })}
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     没有找到匹配的管理员
                   </TableCell>
                 </TableRow>
@@ -396,7 +431,11 @@ export default function AdminUsersPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>编辑管理员</DialogTitle>
-            <DialogDescription>修改管理员信息，留空密码表示不修改</DialogDescription>
+            <DialogDescription>
+              {editing?.id === currentUser?.id
+                ? "修改自己的信息（姓名、邮箱、密码），角色和状态不可更改"
+                : "修改管理员信息，留空密码表示不修改"}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEdit}>
             <div className="space-y-4">
@@ -437,6 +476,7 @@ export default function AdminUsersPage() {
                   <Select
                     value={editForm.role}
                     onValueChange={(value) => setEditForm({ ...editForm, role: value as Role })}
+                    disabled={editing?.id === currentUser?.id}
                   >
                     <SelectTrigger id="edit-role" className="w-full">
                       <SelectValue>{roleLabels[editForm.role]}</SelectValue>
@@ -446,6 +486,25 @@ export default function AdminUsersPage() {
                       <SelectItem value="system_admin">系统管理员</SelectItem>
                     </SelectContent>
                   </Select>
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="edit-status">状态</FieldLabel>
+                  <Select
+                    value={editForm.status}
+                    onValueChange={(value) => setEditForm({ ...editForm, status: value as Status })}
+                    disabled={editing?.id === currentUser?.id}
+                  >
+                    <SelectTrigger id="edit-status" className="w-full">
+                      <SelectValue>{statusLabels[editForm.status]}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="enabled">启用</SelectItem>
+                      <SelectItem value="disabled">禁用</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {editing?.id !== currentUser?.id && (
+                    <FieldDescription>禁用后该账号将无法登录，且立即下线</FieldDescription>
+                  )}
                 </Field>
               </FieldGroup>
               {error && <FieldError>{error}</FieldError>}

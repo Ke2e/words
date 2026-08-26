@@ -26,6 +26,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "邮箱或密码错误" }, { status: 401 });
     }
 
+    if (admin.status === "disabled") {
+      return NextResponse.json({ error: "该账号已被禁用，请联系系统管理员" }, { status: 403 });
+    }
+
     await createSession(admin.id);
     return NextResponse.json({ user: toSafeUser(admin) });
   } catch (err) {

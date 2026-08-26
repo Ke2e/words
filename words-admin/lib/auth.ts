@@ -15,6 +15,7 @@ export function toSafeUser(user: AdminUser) {
     name: user.name,
     email: user.email,
     role: user.role,
+    status: user.status,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -25,7 +26,7 @@ export async function createSession(userId: string) {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
-  // 顺带清理该用户的过期 session
+  // 顺带清理已过期的 session
   await db.delete(adminSessions).where(lt(adminSessions.expiresAt, new Date()));
 
   await db.insert(adminSessions).values({ token, userId, expiresAt });
@@ -41,7 +42,7 @@ export async function createSession(userId: string) {
   return token;
 }
 
-/** 获取当前登录用户（session 有效期内） */
+/** 获取当前登录用户（session 有效期内且账号未被禁用） */
 export async function getCurrentUser(): Promise<AdminUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
@@ -54,7 +55,11 @@ export async function getCurrentUser(): Promise<AdminUser | null> {
     .where(and(eq(adminSessions.token, token), gt(adminSessions.expiresAt, new Date())))
     .limit(1);
 
-  return rows[0]?.user ?? null;
+  const user = rows[0]?.user;
+  // 账号被禁用：session 视为无效
+  if (!user || user.status === "disabled") return null;
+
+  return user;
 }
 
 /** 销毁当前 session */
@@ -73,11 +78,16 @@ export async function hasAnyAdmin(): Promise<boolean> {
   return rows.length > 0;
 }
 
-/** 系统管理员数量（用于防止最后一个系统管理员被降级/删除） */
-export async function countSystemAdmins(): Promise<number> {
+/** 启用中的系统管理员数量（用于保护最后一个可用的系统管理员） */
+export async function countEnabledSystemAdmins(): Promise<number> {
   const rows = await db
     .select({ id: adminUsers.id })
     .from(adminUsers)
-    .where(eq(adminUsers.role, "system_admin"));
+    .where(and(eq(adminUsers.role, "system_admin"), eq(adminUsers.status, "enabled")));
   return rows.length;
+}
+
+/** 删除指定用户的全部 session（账号被禁用时踢下线） */
+export async function revokeUserSessions(userId: string) {
+  await db.delete(adminSessions).where(eq(adminSessions.userId, userId));
 }

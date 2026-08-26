@@ -3,15 +3,19 @@ import bcrypt from "bcryptjs";
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { adminUsers } from "@/lib/db/schema/admin";
-import { countSystemAdmins, toSafeUser } from "@/lib/auth";
+import {
+  countEnabledSystemAdmins,
+  revokeUserSessions,
+  toSafeUser,
+} from "@/lib/auth";
 import { requireSystemAdmin } from "@/lib/admin-guard";
 
-/** 编辑管理员（仅系统管理员）：姓名、邮箱、角色、可选重置密码 */
+/** 编辑管理员（仅系统管理员）：姓名、邮箱、角色、状态、可选重置密码 */
 export async function PATCH(
   request: NextRequest,
   ctx: RouteContext<"/api/admin-users/[id]">
 ) {
-  const { error } = await requireSystemAdmin();
+  const { user, error } = await requireSystemAdmin();
   if (error) return error;
 
   try {
@@ -21,6 +25,16 @@ export async function PATCH(
     const [target] = await db.select().from(adminUsers).where(eq(adminUsers.id, id)).limit(1);
     if (!target) {
       return NextResponse.json({ error: "管理员不存在" }, { status: 404 });
+    }
+
+    const isSelf = id === user.id;
+
+    // 系统管理员不能修改自己的角色和状态
+    if (isSelf && (body?.role !== undefined || body?.status !== undefined)) {
+      return NextResponse.json(
+        { error: "不能修改自己的角色或状态" },
+        { status: 400 }
+      );
     }
 
     const updates: Partial<typeof adminUsers.$inferInsert> = { updatedAt: new Date() };
@@ -48,17 +62,31 @@ export async function PATCH(
     }
 
     if (body?.role === "system_admin" || body?.role === "admin") {
-      // 防止把最后一个系统管理员降级
+      // 防止把最后一个启用中的系统管理员降级
       if (target.role === "system_admin" && body.role === "admin") {
-        const count = await countSystemAdmins();
+        const count = await countEnabledSystemAdmins();
         if (count <= 1) {
           return NextResponse.json(
-            { error: "不能降级最后一个系统管理员" },
+            { error: "不能降级最后一个启用中的系统管理员" },
             { status: 400 }
           );
         }
       }
       updates.role = body.role;
+    }
+
+    if (body?.status === "enabled" || body?.status === "disabled") {
+      // 防止禁用最后一个启用中的系统管理员
+      if (body.status === "disabled" && target.role === "system_admin" && target.status === "enabled") {
+        const count = await countEnabledSystemAdmins();
+        if (count <= 1) {
+          return NextResponse.json(
+            { error: "不能禁用最后一个启用中的系统管理员" },
+            { status: 400 }
+          );
+        }
+      }
+      updates.status = body.status;
     }
 
     if (typeof body?.password === "string" && body.password.length > 0) {
@@ -73,6 +101,11 @@ export async function PATCH(
       .set(updates)
       .where(eq(adminUsers.id, id))
       .returning();
+
+    // 账号被禁用：立即踢下线（删除该用户全部 session）
+    if (updates.status === "disabled") {
+      await revokeUserSessions(id);
+    }
 
     return NextResponse.json({ user: toSafeUser(updated) });
   } catch (err) {
@@ -101,12 +134,12 @@ export async function DELETE(
       return NextResponse.json({ error: "管理员不存在" }, { status: 404 });
     }
 
-    // 防止删除最后一个系统管理员
-    if (target.role === "system_admin") {
-      const count = await countSystemAdmins();
+    // 防止删除最后一个启用中的系统管理员
+    if (target.role === "system_admin" && target.status === "enabled") {
+      const count = await countEnabledSystemAdmins();
       if (count <= 1) {
         return NextResponse.json(
-          { error: "不能删除最后一个系统管理员" },
+          { error: "不能删除最后一个启用中的系统管理员" },
           { status: 400 }
         );
       }

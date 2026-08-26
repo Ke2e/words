@@ -8,6 +8,7 @@ export type User = {
   name: string
   email: string
   role: "system_admin" | "admin"
+  status: "enabled" | "disabled"
 }
 
 type AuthContextType = {

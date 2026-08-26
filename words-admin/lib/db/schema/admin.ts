@@ -6,6 +6,11 @@ import { pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-
 export const adminRoleEnum = pgEnum("admin_role", ["system_admin", "admin"]);
 
 /**
+ * 管理员状态：enabled 启用 / disabled 禁用
+ */
+export const adminStatusEnum = pgEnum("admin_status", ["enabled", "disabled"]);
+
+/**
  * 管理员表：保存系统管理员和普通管理员数据
  */
 export const adminUsers = pgTable("admin_users", {
@@ -14,6 +19,7 @@ export const adminUsers = pgTable("admin_users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   role: adminRoleEnum("role").notNull().default("admin"),
+  status: adminStatusEnum("status").notNull().default("enabled"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
