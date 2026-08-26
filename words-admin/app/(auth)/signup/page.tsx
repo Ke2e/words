@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,24 +15,15 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { signup, isSystemAdminExist } = useAuth()
+  const { signup, hasAnyAdmin, isLoading } = useAuth()
   const router = useRouter()
 
-  if (isSystemAdminExist) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">系统管理员已存在</CardTitle>
-          <CardDescription>系统管理员只能注册一次，请直接登录</CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button className="w-full" onClick={() => router.push("/signin")}>
-            前往登录
-          </Button>
-        </CardFooter>
-      </Card>
-    )
-  }
+  // 已有系统管理员：禁止二次注册，自动跳转登录页
+  useEffect(() => {
+    if (!isLoading && hasAnyAdmin) {
+      router.replace("/signin")
+    }
+  }, [isLoading, hasAnyAdmin, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -51,17 +42,19 @@ export default function SignUpPage() {
     setIsSubmitting(true)
 
     try {
-      const success = await signup(name, email, password)
-      if (success) {
+      const result = await signup(name, email, password)
+      if (result.ok) {
         router.push("/books")
       } else {
-        setError("注册失败，请重试")
+        setError(result.error ?? "注册失败，请重试")
       }
-    } catch {
-      setError("注册失败，请重试")
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (isLoading || hasAnyAdmin) {
+    return null
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,8 +14,15 @@ export default function SignInPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { login, isSystemAdminExist } = useAuth()
+  const { login, hasAnyAdmin, isLoading } = useAuth()
   const router = useRouter()
+
+  // 数据库无管理员：引导去注册首个系统管理员
+  useEffect(() => {
+    if (!isLoading && !hasAnyAdmin) {
+      router.replace("/signup")
+    }
+  }, [isLoading, hasAnyAdmin, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -23,14 +30,12 @@ export default function SignInPage() {
     setIsSubmitting(true)
 
     try {
-      const success = await login(email, password)
-      if (success) {
+      const result = await login(email, password)
+      if (result.ok) {
         router.push("/books")
       } else {
-        setError("邮箱或密码错误")
+        setError(result.error ?? "邮箱或密码错误")
       }
-    } catch {
-      setError("登录失败，请重试")
     } finally {
       setIsSubmitting(false)
     }
@@ -76,7 +81,7 @@ export default function SignInPage() {
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "登录中..." : "登录"}
           </Button>
-          {!isSystemAdminExist && (
+          {!hasAnyAdmin && (
             <p className="text-sm text-muted-foreground">
               还没有系统管理员？{" "}
               <Link href="/signup" className="text-primary underline-offset-4 hover:underline">

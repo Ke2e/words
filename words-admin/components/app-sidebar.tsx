@@ -19,7 +19,14 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { BookOpenTextIcon, LogOutIcon, UsersIcon } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
-const navItems = [
+type NavItem = {
+  title: string
+  href: string
+  icon: typeof BookOpenTextIcon
+  systemOnly?: boolean
+}
+
+const navItems: { group: string; items: NavItem[] }[] = [
   {
     group: "管理",
     items: [
@@ -32,6 +39,8 @@ const navItems = [
         title: "管理员管理",
         href: "/admin-users",
         icon: UsersIcon,
+        // 仅系统管理员可见
+        systemOnly: true,
       },
     ],
   },
@@ -40,6 +49,8 @@ const navItems = [
 export function AppSidebar() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
+
+  const isSystemAdmin = user?.role === "system_admin"
 
   const initials = user?.name
     ? user.name
@@ -76,6 +87,7 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {
+                  if (item.systemOnly && !isSystemAdmin) return null
                   const Icon = item.icon
                   const isActive = pathname.startsWith(item.href)
                   return (

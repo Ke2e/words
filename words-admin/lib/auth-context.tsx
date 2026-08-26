@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
@@ -13,98 +13,88 @@ export type User = {
 type AuthContextType = {
   user: User | null
   isLoading: boolean
-  isSystemAdminExist: boolean
-  login: (email: string, password: string) => Promise<boolean>
-  signup: (name: string, email: string, password: string) => Promise<boolean>
-  logout: () => void
+  /** 数据库中是否已有管理员（决定能否进入 /signup 注册首个系统管理员） */
+  hasAnyAdmin: boolean
+  /** 刷新登录态（编辑当前用户信息后调用） */
+  refresh: () => Promise<void>
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>
+  signup: (name: string, email: string, password: string) => Promise<{ ok: boolean; error?: string }>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const STORAGE_KEY_USER = "words_admin_user"
-const STORAGE_KEY_ADMIN = "words_system_admin"
-
-function generateId() {
-  return crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [hasAnyAdmin, setHasAnyAdmin] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY_USER)
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored))
-      } catch {
-        localStorage.removeItem(STORAGE_KEY_USER)
-      }
-    }
-    setIsLoading(false)
-  }, [])
-
-  const isSystemAdminExist =
-    typeof window !== "undefined" && !!localStorage.getItem(STORAGE_KEY_ADMIN)
-
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    const stored = localStorage.getItem(STORAGE_KEY_ADMIN)
-    if (!stored) return false
-
+  const refresh = useCallback(async () => {
     try {
-      const admin = JSON.parse(stored)
-      if (admin.email === email && admin.password === password) {
-        const userData: User = {
-          id: admin.id,
-          name: admin.name,
-          email: admin.email,
-          role: "system_admin",
-        }
-        localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData))
-        setUser(userData)
-        return true
-      }
-      return false
+      const res = await fetch("/api/auth/session", { cache: "no-store" })
+      const data = await res.json()
+      setUser(data.user ?? null)
+      setHasAnyAdmin(Boolean(data.hasAnyAdmin))
     } catch {
-      return false
+      setUser(null)
     }
   }, [])
 
-  const signup = useCallback(
-    async (name: string, email: string, password: string): Promise<boolean> => {
-      if (isSystemAdminExist) return false
+  useEffect(() => {
+    refresh().finally(() => setIsLoading(false))
+  }, [refresh])
 
-      const adminData = {
-        id: generateId(),
-        name,
-        email,
-        password,
-        role: "system_admin",
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const res = await fetch("/api/auth/signin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        return { ok: false, error: data.error ?? "登录失败，请重试" }
       }
-      localStorage.setItem(STORAGE_KEY_ADMIN, JSON.stringify(adminData))
+      setUser(data.user)
+      setHasAnyAdmin(true)
+      return { ok: true }
+    } catch {
+      return { ok: false, error: "网络错误，请重试" }
+    }
+  }, [])
 
-      const userData: User = {
-        id: adminData.id,
-        name: adminData.name,
-        email: adminData.email,
-        role: "system_admin",
+  const signup = useCallback(async (name: string, email: string, password: string) => {
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        return { ok: false, error: data.error ?? "注册失败，请重试" }
       }
-      localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userData))
-      setUser(userData)
-      return true
-    },
-    [isSystemAdminExist]
-  )
+      setUser(data.user)
+      setHasAnyAdmin(true)
+      return { ok: true }
+    } catch {
+      return { ok: false, error: "网络错误，请重试" }
+    }
+  }, [])
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY_USER)
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/signout", { method: "POST" })
+    } catch {
+      // 忽略网络错误，本地状态照常清理
+    }
     setUser(null)
     router.push("/signin")
   }, [router])
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isSystemAdminExist, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, hasAnyAdmin, refresh, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   )

@@ -69,3 +69,44 @@
 
 <br />
 
+## Conventional Commits（约定式提交）规范，也是目前最主流的 Git 提交信息风格。
+
+- &#x20;feat 新增功能
+- &#x20;fix 修复 bug
+- &#x20;docs 文档变更
+- &#x20;refactor 代码重构
+- &#x20;style 样式变更
+- &#x20;test 测试变更
+- &#x20;chore 构建工具变更
+
+使用 coding agent 内置的 git 进行 add 到暂存区或者 push 到远端
+
+<br />
+
+## ORM （Object-Relational Mapping，对象关系映射）
+
+- 数据库 supabase 已云端创建
+  - .env DATABASE\_URL 
+  - next.js 面向对象编程  高级语言
+    - 一个表（user table）就是一个类（user class），其中是通过 drizzle orm 映射
+    - User user.save() -> sql insert into 
+    - ORM 将实际的代码运行翻译成对应的 sql 语句并直接执行
+  - 让 drizzle 接手数据库 .env
+    - 不需要手动建表，直接建立 schema ，orm 会直接映射成对应的 数据表
+    - migrate 数据表迁移，orm 会将 schema 迁移到数据库并创建对应的数据库表
+
+## Drizzle
+
+- 是一种 ORM 工具，有一系列的包和命令
+  - db 目录中
+    - index.ts 数据库配置链接，并返回 db 数据库操作句柄
+    - schema.ts 对象定义数据库表结构
+  - 配套了一系列脚本
+    - db:generate 生成数据库迁移文件
+      - 数据库加表，改字段，添加索引等等
+      - 执行之后，会多一个 schema 文件
+    - db:migrate 数据库迁移，将 schema 迁移到数据库并创建对应的数据库表
+    - db:push 数据库推送，将数据库迁移文件 迁移到数据库
+    - db:reset 数据库重置，将数据库重置为初始状态
+    - db:studio 数据库管理工具，用于管理数据库表和数据
+
