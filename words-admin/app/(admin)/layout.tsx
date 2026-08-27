@@ -17,10 +17,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [user, isLoading, router])
 
-  if (isLoading || !user) {
-    return null
-  }
-
+  // 关键点：不等待加载完成，立即渲染布局
+  // 已经登录的用户切换页面时，用户信息已经在 context 里了 → 没有停顿
+  // 没登录的会在 useEffect 里跳转，所以也不会一直卡在这儿
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
@@ -30,7 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Separator orientation="vertical" className="h-4" />
           <span className="text-sm font-medium text-muted-foreground">Words Admin</span>
         </header>
-        <div className="flex flex-1 flex-col p-4">{children}</div>
+        <div className="flex flex-1 flex-col p-4">{user ? children : null}</div>
       </SidebarInset>
     </SidebarProvider>
   )
