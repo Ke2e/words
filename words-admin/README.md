@@ -4,6 +4,14 @@
 
 技术栈：Next.js 16 (App Router) · React 19 · TypeScript (strict) · Drizzle ORM · PostgreSQL (Supabase) · Tailwind CSS v4 · shadcn/ui
 
+## 项目预览
+
+| 单词书管理 | 管理员管理 |
+| --- | --- |
+| ![单词书管理](docs/screenshots/books.png) | ![管理员管理](docs/screenshots/admin-users.png) |
+
+> 演示账号：`demo-admin@words.local` / `demo123456`（系统管理员）
+
 ## 功能
 
 ### 管理员与权限

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getWordById, type WordContent } from 'app/db';
+import { getWordById, unwrapContent } from 'app/db';
 import {
   TransSection,
   SentenceSection,
@@ -19,7 +19,7 @@ export default async function WordPage({ params }: { params: { id: string } }) {
   const word = await getWordById(id);
   if (!word) notFound();
 
-  const c = (word.content ?? null) as WordContent | null;
+  const c = unwrapContent(word.content);
 
   return (
     <main className="mx-auto min-h-screen max-w-md bg-gray-50 pb-10">

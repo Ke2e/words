@@ -1,7 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { auth } from 'app/auth';
-import { getBookByBookId, getWordsByBookId, getProgress, type WordContent } from 'app/db';
+import {
+  getBookByBookId,
+  getWordsByBookId,
+  getProgress,
+  unwrapContent,
+} from 'app/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,8 +53,7 @@ export default async function BookPage({
         ) : (
           <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
             {words.map((word, index) => {
-              const c = (word.content ?? null) as WordContent | null;
-              const tranCn = c?.trans?.[0]?.tranCn ?? null;
+              const tranCn = unwrapContent(word.content)?.trans?.[0]?.tranCn ?? null;
               return (
                 <Link
                   key={word.id}

@@ -241,8 +241,15 @@ export type StudyCard = {
   pCn: string | null; // 降级：phrases[0].pCn
 };
 
+/** 解包 content：库中存的是原始 {word:{content}} 嵌套结构（兼容已解包形式） */
+export function unwrapContent(content: unknown): WordContent | null {
+  if (content == null) return null;
+  const inner = (content as { word?: { content?: WordContent } }).word?.content;
+  return (inner ?? content) as WordContent;
+}
+
 export function toStudyCard(row: Word): StudyCard {
-  const c = (row.content ?? null) as WordContent | null;
+  const c = unwrapContent(row.content);
   return {
     id: row.id,
     wordRank: row.wordRank,

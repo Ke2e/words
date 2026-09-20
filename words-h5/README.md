@@ -4,6 +4,18 @@
 
 技术栈：Next.js 14 (App Router) · NextAuth v5 · React 18 · TypeScript · Drizzle ORM · Supabase PostgreSQL
 
+## 项目预览
+
+| 首页（书单 + 最近学习） | 单词书详情 |
+| --- | --- |
+| ![首页](docs/screenshots/home.png) | ![单词书详情](docs/screenshots/book.png) |
+
+| 卡片学习（音标/释义/例句） | 单词详情 | 我的（学习进度） |
+| --- | --- | --- |
+| ![卡片学习](docs/screenshots/study.png) | ![单词详情](docs/screenshots/word.png) | ![我的](docs/screenshots/mine.png) |
+
+> 演示账号：`demo@words.local` / `demo123456`
+
 ## 功能
 
 - **单词书浏览**：首页书单 + 最近学习卡片，未登录点击单词书自动引导登录（携带回跳地址）
