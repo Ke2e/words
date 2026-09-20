@@ -6,7 +6,8 @@
 
 | 子项目 | 说明 | 技术栈 |
 | --- | --- | --- |
-| [words-admin](./words-admin) | 单词书后台管理系统：管理员权限、单词书与词库数据管理 | Next.js 16 · Drizzle ORM · Supabase |
+| [words-admin](./words-admin) | 管理后台：管理员权限、单词书与词库数据管理 | Next.js 16 · Drizzle ORM · Supabase |
+| [words-h5](./words-h5) | H5 学习端：卡片式背单词、进度同步（与 words-admin 共库） | Next.js 14 · NextAuth v5 · Supabase |
 
 ## words-admin 核心功能
 
@@ -31,22 +32,17 @@
 
 ## 开发方式：SDD
 
-项目按 **需求（proposal）→ 技术设计（design）→ 任务拆解（task）→ 按任务边界执行 + 人工验收** 的流程推进：
+项目按 **需求（proposal）→ 技术设计（design）→ 任务拆解 → 按任务边界执行 + 人工验收** 的流程推进：
 
 1. 先写规格文档，明确需求边界与验收标准
 2. AI 编码助手按单个任务执行，不越界扩展
 3. 每个任务完成后对照验收标准自检，人工确认后进入下一任务
 
-这种"规格先行 + 小步验收"的方式保证了代码与需求的一致性，也让人工审查始终聚焦在关键决策上。
+这种"规格先行 + 小步验收"的方式保证了代码与需求的一致性，也让人工审查始终聚焦在关键决策上。各子项目的 SDD 文档：
+
+- [words-h5 需求文档](./words-h5/docs/proposal.md)、[技术设计文档](./words-h5/docs/design.md)（含任务拆分与验收标准）
 
 ## 快速开始
 
-```bash
-cd words-admin
-npm install
-# 配置 .env.local：DATABASE_URL=<Supabase PostgreSQL 连接串>
-npm run db:push   # 同步数据库表结构
-npm run dev       # http://localhost:3000
-```
-
-详细说明见 [words-admin/README.md](./words-admin/README.md)。
+- 管理后台（words-admin）：见 [words-admin/README.md](./words-admin/README.md)
+- H5 学习端（words-h5）：见 [words-h5/README.md](./words-h5/README.md)

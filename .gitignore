@@ -142,8 +142,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-# 课程脚手架与本地调试残留（不入库）
-nextjs-typescript-starter/
+# 本地调试残留（不入库）
 cookies.txt
 
 # 本地数据处理产物
